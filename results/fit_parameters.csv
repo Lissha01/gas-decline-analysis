@@ -1,0 +1,19 @@
+well,field,model,qi_mcfd,Di_nominal_per_year,b,first_year_decline_pct,rmse_ln_rate,aic,months_fitted
+KUTTLER 'H' 1,Bradshaw Gas Area,exponential,84.0,0.1274,0.0,12.0,0.18,-534.6,157
+KUTTLER 'H' 1,Bradshaw Gas Area,harmonic,128.3,0.4392,1.0,30.5,0.158,-574.6,157
+KUTTLER 'H' 1,Bradshaw Gas Area,hyperbolic,117.7,0.3307,0.802,25.4,0.155,-580.2,157
+ROBBINS 2-27,Glick,exponential,137.5,0.1177,0.0,11.1,0.247,-750.1,270
+ROBBINS 2-27,Glick,harmonic,330.1,0.944,1.0,48.6,0.254,-736.2,270
+ROBBINS 2-27,Glick,hyperbolic,202.1,0.2816,0.518,23.1,0.197,-870.1,270
+BAIER #3,Aetna Gas Area,exponential,81.0,0.1256,0.0,11.8,0.366,-516.3,259
+BAIER #3,Aetna Gas Area,harmonic,589.8,3.2637,1.0,76.5,0.28,-655.1,259
+BAIER #3,Aetna Gas Area,hyperbolic,253.2,0.7659,0.712,45.7,0.246,-720.6,259
+CLIFT 'A' 3-33,Bradshaw Gas Area,exponential,64.9,0.1073,0.0,10.2,0.269,-361.4,139
+CLIFT 'A' 3-33,Bradshaw Gas Area,harmonic,88.1,0.2981,1.0,23.0,0.224,-412.2,139
+CLIFT 'A' 3-33,Bradshaw Gas Area,hyperbolic,126.8,1.1484,1.845,46.0,0.207,-431.5,139
+Jones 24-13,Cherry Creek Niobrara Gas Area,exponential,27.3,0.2103,0.0,19.0,0.296,-334.5,139
+Jones 24-13,Cherry Creek Niobrara Gas Area,harmonic,94.7,2.2771,1.0,69.5,0.178,-476.5,139
+Jones 24-13,Cherry Creek Niobrara Gas Area,hyperbolic,75.5,1.3834,0.852,59.9,0.173,-481.2,139
+Logan 'X' 9,Stranathan,exponential,96.4,0.1097,0.0,10.4,0.417,-309.5,179
+Logan 'X' 9,Stranathan,harmonic,261.4,0.8315,1.0,45.4,0.29,-438.8,179
+Logan 'X' 9,Stranathan,hyperbolic,326.2,1.5601,1.245,58.0,0.28,-449.7,179
