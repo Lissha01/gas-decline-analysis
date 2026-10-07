@@ -1,7 +1,7 @@
-well,test_months,actual_mmcf,exponential_error_pct,harmonic_error_pct,hyperbolic_error_pct,hyperbolic_p90_mmcf,hyperbolic_p10_mmcf,actual_inside_p90_p10
-KUTTLER 'H' 1,60,70.95,-7.1,16.9,-7.1,55.89,92.98,True
-ROBBINS 2-27,60,137.17,-12.6,6.1,-12.6,113.83,145.03,True
-BAIER #3,60,66.99,-49.6,9.9,-25.8,39.14,69.69,True
-CLIFT 'A' 3-33,60,55.4,-27.8,-2.5,16.0,61.45,64.72,False
-Jones 24-13,60,14.45,-46.2,-1.8,23.1,16.52,19.0,False
-Logan 'X' 9,60,73.57,-23.6,34.7,-23.6,53.81,69.5,False
+well,test_months,test_zero_or_missing_months,train_months_fitted,train_months_flagged,actual_mmcf,exponential_error_pct,harmonic_error_pct,hyperbolic_error_pct,hyperbolic_p90_mmcf,hyperbolic_p10_mmcf,actual_inside_p90_p10
+KUTTLER 'H' 1,60,0,36,0,70.95,-7.1,16.9,-7.1,55.89,92.98,True
+ROBBINS 2-27,60,0,36,0,137.17,-12.6,6.1,-12.6,113.83,145.03,True
+BAIER #3,60,0,36,0,66.99,-49.6,9.9,-25.8,39.14,69.69,True
+CLIFT 'A' 3-33,60,0,36,0,55.4,-27.8,-2.5,16.0,61.45,64.72,False
+Jones 24-13,60,0,36,0,14.45,-46.2,-1.8,23.1,16.52,19.0,False
+Logan 'X' 9,60,0,33,3,73.57,-23.6,34.7,-23.6,53.81,69.5,False

@@ -1,0 +1,19 @@
+well,model,error_pct_filtered,error_pct_unfiltered
+KUTTLER 'H' 1,exponential,-7.1,-7.1
+KUTTLER 'H' 1,harmonic,16.9,16.9
+KUTTLER 'H' 1,hyperbolic,-7.1,-7.1
+ROBBINS 2-27,exponential,-12.6,-12.6
+ROBBINS 2-27,harmonic,6.1,6.1
+ROBBINS 2-27,hyperbolic,-12.6,-12.6
+BAIER #3,exponential,-49.6,-49.6
+BAIER #3,harmonic,9.9,9.9
+BAIER #3,hyperbolic,-25.8,-25.8
+CLIFT 'A' 3-33,exponential,-27.8,-27.8
+CLIFT 'A' 3-33,harmonic,-2.5,-2.5
+CLIFT 'A' 3-33,hyperbolic,16.0,16.0
+Jones 24-13,exponential,-46.2,-46.2
+Jones 24-13,harmonic,-1.8,-1.8
+Jones 24-13,hyperbolic,23.1,23.1
+Logan 'X' 9,exponential,-23.6,-23.0
+Logan 'X' 9,harmonic,34.7,34.0
+Logan 'X' 9,hyperbolic,-23.6,-23.0
