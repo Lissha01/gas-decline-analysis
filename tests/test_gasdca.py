@@ -7,7 +7,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from gasdca import arps
-from gasdca.data import downtime_months, load_monthly, well_series
+from gasdca.data import anomalous_months, load_monthly, well_series
 from gasdca.fit import fit_arps
 from fetch_kgs import parse_monthly_gas
 
@@ -48,11 +48,38 @@ def test_fit_recovers_known_curve():
     assert f.b == pytest.approx(b, abs=0.15)
 
 
-def test_downtime_month_is_flagged():
+def test_anomalous_month_is_flagged():
     df = load_monthly()
     s = well_series(df, "1042372714").copy()
     s.iloc[30, s.columns.get_loc("rate")] *= 0.2
-    assert downtime_months(s)[30]
+    assert anomalous_months(s)[30]
+
+
+def test_hindcast_uses_no_information_after_cutoff():
+    """Changing every month after the cutoff must not change the fitted curves."""
+    from gasdca.workflow import hindcast
+    s = well_series(load_monthly(), "1042372714")
+    h1 = hindcast(s, n_boot=5)
+    cut = int(np.flatnonzero(h1["test"])[0])
+    s2 = s.copy()
+    s2.iloc[cut:, s2.columns.get_loc("gas_mcf")] = s2["gas_mcf"].values[cut:] // 10
+    s2.iloc[cut:, s2.columns.get_loc("rate")] = s2["rate"].values[cut:] * 0.1
+    h2 = hindcast(s2, n_boot=5)
+    for m in h1["fits"]:
+        assert (h1["fits"][m].qi, h1["fits"][m].Di, h1["fits"][m].b) == (h2["fits"][m].qi, h2["fits"][m].Di, h2["fits"][m].b)
+
+
+def test_hindcast_test_period_is_fixed_calendar_interval():
+    """Zero months inside the test period are kept (and counted), not dropped."""
+    from gasdca.workflow import hindcast
+    s = well_series(load_monthly(), "1042372714").copy()
+    h = hindcast(s, n_boot=5)
+    i = np.flatnonzero(h["test"])
+    s.iloc[i[10]:i[14], s.columns.get_loc("gas_mcf")] = 0
+    s.iloc[i[10]:i[14], s.columns.get_loc("rate")] = 0.0
+    h0 = hindcast(s, n_boot=5)
+    assert h0["test_months"] == 60 and h0["test_zero_months"] == 4
+    assert np.array_equal(np.flatnonzero(h0["test"]), i)
 
 
 def test_data_matches_kgs_totals():
