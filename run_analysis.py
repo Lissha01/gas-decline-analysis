@@ -43,7 +43,7 @@ def main():
     as_of = df["month"].max()
 
     series, fits_full, hind, fore = {}, {}, {}, {}
-    rows_fit, rows_h, rows_f = [], [], []
+    rows_fit, rows_h, rows_f, rows_sens = [], [], [], []
     for _, w in wells.iterrows():
         k, name = w["lease_kid"], w["well"]
         s = well_series(df, k)
@@ -57,11 +57,19 @@ def main():
                              "rmse_ln_rate": round(f.rmse_log, 3), "aic": round(f.aic, 1), "months_fitted": f.n})
         h = hindcast(s)
         hind[k] = h
-        rows_h.append({"well": name, "test_months": h["test_months"], "actual_mmcf": round(mmcf(h["actual_mcf"]), 2),
+        rows_h.append({"well": name, "test_months": h["test_months"],
+                       "test_zero_or_missing_months": h["test_zero_months"],
+                       "train_months_fitted": h["train_months_fitted"], "train_months_flagged": h["train_flagged"],
+                       "actual_mmcf": round(mmcf(h["actual_mcf"]), 2),
                        **{f"{m}_error_pct": round(100 * h[f"err_{m}"], 1) for m in MODELS},
                        "hyperbolic_p90_mmcf": round(mmcf(h["hyp_p90"]), 2),
                        "hyperbolic_p10_mmcf": round(mmcf(h["hyp_p10"]), 2),
                        "actual_inside_p90_p10": h["covered"]})
+        h_raw = hindcast(s, filter_anomalies=False, n_boot=20)
+        for m in MODELS:
+            rows_sens.append({"well": name, "model": m,
+                              "error_pct_filtered": round(100 * h[f"err_{m}"], 1),
+                              "error_pct_unfiltered": round(100 * h_raw[f"err_{m}"], 1)})
         f = forward_forecast(s, as_of)
         if f is not None:
             fore[k] = f
@@ -70,13 +78,17 @@ def main():
                            "remaining_p90_mmcf": round(mmcf(f["rem_p90"]), 1),
                            "remaining_p50_mmcf": round(mmcf(f["rem_p50"]), 1),
                            "remaining_p10_mmcf": round(mmcf(f["rem_p10"]), 1),
-                           "eur_p50_mmcf": round(mmcf(f["cum_to_date"] + f["rem_p50"]), 1),
+                           "produced_plus_remaining_p50_mmcf": round(mmcf(f["cum_to_date"] + f["rem_p50"]), 1),
+                           "p50_stops_because": (f"rate reaches {Q_LIMIT:g} Mcf/d" if f["p50_reaches_limit"]
+                                                 else f"end of {END_YEAR}, still producing"),
                            "p50_end_date": f["end_date_p50"].strftime("%Y-%m")})
 
     pd.DataFrame(rows_fit).to_csv("results/fit_parameters.csv", index=False)
     hdf = pd.DataFrame(rows_h)
     hdf.to_csv("results/hindcast.csv", index=False)
     pd.DataFrame(rows_f).to_csv("results/forecast.csv", index=False)
+    sens = pd.DataFrame(rows_sens)
+    sens.to_csv("results/hindcast_filter_sensitivity.csv", index=False)
 
     names = dict(zip(wells["lease_kid"], wells["well"]))
     fields = dict(zip(wells["lease_kid"], wells["field"]))
@@ -90,6 +102,8 @@ def main():
     print(pd.DataFrame(rows_f).to_string(index=False))
     mae = {m: float(np.mean(np.abs(hdf[f"{m}_error_pct"]))) for m in MODELS}
     print("Mean absolute 5-year hindcast error (%):", {m: round(v, 1) for m, v in mae.items()})
+    print("Same, without the anomaly filter (%):",
+          {m: round(float(sens.query("model == @m")["error_pct_unfiltered"].abs().mean()), 1) for m in MODELS})
 
 
 def _model_legend(fig, extra=()):
@@ -102,7 +116,7 @@ def plot_rate_fits(series, fits_full, names, fields):
     fig, axes = plt.subplots(2, 3, figsize=(12, 6.6), sharey=False)
     for ax, (k, s) in zip(axes.ravel(), series.items()):
         fits, info = fits_full[k]
-        win, down = info["window"], info["downtime"]
+        win, down = info["window"], info["anomalous"]
         prod = s["gas_mcf"].values > 0
         ax.scatter(s.index[prod & ~win], s["rate"][prod & ~win], s=7, color=MUTED, lw=0)
         ax.scatter(s.index[win & ~down], s["rate"][win & ~down], s=8, color=INK2, lw=0)
@@ -121,7 +135,7 @@ def plot_rate_fits(series, fits_full, names, fields):
         ax.xaxis.set_major_locator(mdates.YearLocator(5))
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
     extra = [plt.Line2D([], [], color=INK2, marker="o", ls="", ms=4, label="Month used in fit"),
-             plt.Line2D([], [], color=INK2, marker="o", ls="", ms=5, mfc="none", label="Anomalous month (left out)"),
+             plt.Line2D([], [], color=INK2, marker="o", ls="", ms=5, mfc="none", label="Flagged anomalous month (left out)"),
              plt.Line2D([], [], color=MUTED, marker="o", ls="", ms=4, label="After first long shut-in")]
     _model_legend(fig, extra)
     fig.suptitle("Arps fits to the first decline of each well (log scale)", x=0.0, ha="left", y=1.07, fontsize=12)

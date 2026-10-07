@@ -19,8 +19,8 @@ New to this? Open [`notebooks/gas_dca_walkthrough.ipynb`](notebooks/gas_dca_walk
 | qi | initial rate (Mcf/d) |
 | Di | initial nominal decline rate (per year in tables, per day in code) |
 | b | Arps exponent: 0 = exponential, 1 = harmonic, in between = hyperbolic |
-| EUR | estimated ultimate recovery = produced to date + remaining |
-| P90 / P50 / P10 | low / middle / high case: 90% / 50% / 10% chance of doing at least this well |
+| EUR | estimated ultimate recovery: all the gas a well will ever produce. Only used when a forecast runs all the way to the economic limit |
+| P90 / P50 / P10 | low / middle / high case: the 10th / 50th / 90th percentile of a forecast ensemble. They describe spread *under the chosen model and bootstrap*, not real-world probabilities |
 
 ## Data
 
@@ -52,7 +52,7 @@ For example, Logan 'X' 9 produced 3,423 Mcf in January 2010, so its rate was 3,4
 **2. Fit window.**
 - The window starts at the peak month within the first 6 producing months.
 - It ends at the first shut-in of 3 or more months.
-- Months distorted by downtime or late reporting are left out of the fit. A month is flagged if its rate is below half, or above twice, the median of the 5 months around it, or below 30% of the median of the previous year. Their gas still counts in cumulative production.
+- Months whose rate departs strongly from the months around them are flagged as anomalous and left out of the fit. A month is flagged if its rate is below half, or above twice, the median of the 5 months around it, or below 30% of the median of the previous year. Partial-month downtime, late reporting or curtailment could explain these months, but monthly volumes alone cannot show which. Their gas still counts in cumulative production, and the hindcast is repeated without the filter to show how much it matters (step 4).
 
 **3. Arps models.**
 - Exponential: q = qi·e^(−Di·t)
@@ -62,9 +62,9 @@ For example, Logan 'X' 9 produced 3,423 Mcf in January 2010, so its rate was 3,4
 Each model is fitted by robust least squares on ln(rate). Working in logs means a 10% miss counts the same at any rate.
 
 **4. Blind test (hindcast).** For each model:
-- Fit the first 36 months after the peak.
-- Predict the next 60 months.
-- Compare the prediction with the gas actually produced.
+- The cutoff is 36 months after the peak. Everything that shapes the forecast (fit window, anomaly flags, fits, bootstrap) is computed from the months before the cutoff only. A test checks that changing every later month leaves the fits unchanged.
+- Predict the next 60 calendar months, every month included. A month with zero or no reported production counts as zero actual gas, and the curves still have to predict it. KGS lists no zero months, so "produced nothing" and "record missing" cannot be told apart. The number of such months is reported in `results/hindcast.csv`.
+- Compare the predicted gas with the gas actually produced over those 60 months.
 
 **5. Forecast.**
 - Applies to the three wells still producing in 2026.
@@ -72,7 +72,7 @@ Each model is fitted by robust least squares on ln(rate). Working in logs means 
 - Switches to an exponential when the annual decline reaches 6% (the *modified hyperbolic*). This stops b from forecasting gas that never runs out.
 - Each forecast ends at 1 Mcf/d or at the end of 2050, whichever comes first.
 
-**6. Uncertainty.** A residual block bootstrap builds 200 alternative histories from the fitted trend. Each one is a different reshuffle of 6-month blocks of the fit's misfit. Every history is refitted and forecast. The 10th, 50th and 90th percentiles of remaining gas give P90, P50 and P10.
+**6. Uncertainty.** A residual block bootstrap builds 200 alternative histories from the fitted trend. Each one is a different reshuffle of 6-month blocks of the fit's misfit. Every history is refitted and forecast. The 10th, 50th and 90th percentiles of remaining gas give P90, P50 and P10. These only capture month-to-month noise around one model. They do not include the chance that the model itself is wrong, so they are not real-world probabilities.
 
 ## Results
 
@@ -101,23 +101,27 @@ What the test shows:
 - **The exponential model under-predicted every well.** Assuming a constant decline rate is too pessimistic for these wells.
 - **Harmonic did best on average,** but over-predicted Logan by 35%. No single model wins on every well.
 - **The best fit to history is not the best forecast.** Hyperbolic always fits the past best because it has an extra parameter. It still came second here.
+- **The anomaly filter barely matters here.** Without it, the mean absolute errors are 27.7%, 11.9% and 17.9% instead of 27.8%, 12.0% and 18.0% (`results/hindcast_filter_sensitivity.csv`). Only Logan 'X' 9 had flagged months in its 3 training years (3 of 36).
+- **The test windows were clean.** All six 60-month test windows had production in every month, so counting zero months changed nothing for these wells.
 - **The bootstrap range is too narrow.** The hyperbolic P90 to P10 range contained the actual volume for only 3 of the 6 wells. Noise-based ranges miss the bigger uncertainty, which is picking the wrong model or a change in how the well is operated.
 
 ### Forecast for producing wells
 
 ![Forecast](figures/forecast.png)
 
-| Well | Rate now (Mcf/d) | Produced (MMcf) | Remaining P90 / P50 / P10 (MMcf) | EUR P50 (MMcf) | P50 end |
+| Well | Rate now (Mcf/d) | Produced (MMcf) | Remaining P90 / P50 / P10 (MMcf) | Produced + remaining, P50 (MMcf) | P50 forecast stops because |
 |---|---|---|---|---|---|
-| ROBBINS 2-27 | 12.9 | 423.5 | 44.2 / 55.6 / 59.0 | 479.1 | still producing end-2050 |
-| BAIER #3 | 6.7 | 284.5 | 26.2 / 30.5 / 31.7 | 315.0 | still producing end-2050 |
-| Jones 24-13 | 1.5 | 55.6 | 0.3 / 0.5 / 1.0 | 56.2 | Oct 2027 |
+| ROBBINS 2-27 | 12.9 | 423.5 | 44.2 / 55.6 / 59.0 | 479.1 (to end-2050) | end of 2050, still producing |
+| BAIER #3 | 6.7 | 284.5 | 26.2 / 30.5 / 31.7 | 315.0 (to end-2050) | end of 2050, still producing |
+| Jones 24-13 | 1.5 | 55.6 | 0.3 / 0.5 / 1.0 | 56.2 (EUR) | rate reaches 1 Mcf/d, Oct 2027 |
 
-Rate now is the average of the last 6 months. From the hindcast, the true range is likely wider than P90 to P10 shows.
+- **Rate now** is the average of the last 6 months.
+- **Only Jones 24-13 has an EUR.** ROBBINS and BAIER are still above the economic limit when the forecast stops at the end of 2050. Their total is recovery to 2050, not ultimate recovery, which would need a longer forecast and a justified abandonment rate.
+- **The real range is likely wider.** The P90 to P10 values are ensemble percentiles under one model. The hindcast shows that range missed the actual result for half the wells.
 
 ## Limitations
 
-- **Calendar-day rates.** Without producing days, downtime can only be filtered out approximately.
+- **Calendar-day rates.** Without producing days, a low month cannot be explained, only flagged. The filter is a rule of thumb, not a diagnosis.
 - **Sales volumes, not well tests.** Line pressure, compression and curtailment all show up in the data as if they were reservoir decline.
 - **Arps is empirical.** It assumes the same operating conditions continue in the future. It does not model the reservoir, and it does not account for refracs, workovers or new wells nearby.
 - **Fixed economic inputs.** The 1 Mcf/d limit and 6% terminal decline are fixed assumptions, not based on prices or costs.
@@ -127,7 +131,7 @@ Rate now is the average of the last 6 months. From the hindcast, the true range 
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q        # 9 tests
+python -m pytest -q        # 11 tests
 python run_analysis.py     # writes results/*.csv and figures/*.png
 ```
 
@@ -137,7 +141,7 @@ GitHub Actions runs the tests and refreshes the figures and results on every pus
 
 ```
 gasdca/arps.py        Arps rate and cumulative equations, modified hyperbolic
-gasdca/data.py        loading, rate conversion, fit window, downtime filter
+gasdca/data.py        loading, rate conversion, fit window, anomaly flags
 gasdca/fit.py         robust fitting, block bootstrap, P90/P50/P10
 gasdca/workflow.py    full-history fits, hindcast, forward forecast
 run_analysis.py       runs everything and writes figures and tables
@@ -145,6 +149,15 @@ scripts/fetch_kgs.py  re-downloads the data from KGS
 tests/                checks on the equations, fitting, filters and data
 notebooks/            plain-language walkthrough for Google Colab
 ```
+
+## Review fixes (October 2026)
+
+An outside review found five weaknesses, all now fixed:
+1. **Possible look-ahead in the blind test.** The anomaly flags used a centred window over the whole series, so months after the cutoff could affect which training months were kept. Now all preprocessing uses the history before the cutoff only, and a test checks it. For these six wells the flags were identical either way, so no result changed.
+2. **The test period could skip months.** It left out zero months and could end early at a later shut-in. It is now a fixed 60-month calendar interval with zero or missing months counted.
+3. **"EUR" was used for forecasts cut off at 2050.** It is now labelled as recovery to 2050.
+4. **Flagged months were described as downtime.** Rate data cannot show the cause, so they are now called flagged anomalies, with a with/without-filter comparison.
+5. **P90/P50/P10 read like real-world probabilities.** They are now described as ensemble percentiles under the model's assumptions.
 
 ## Reference
 
