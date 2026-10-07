@@ -139,6 +139,7 @@ def bootstrap_fits(t, q, model="hyperbolic", n_boot=200, block=6, seed=0, **kw):
 
 
 def p90_p50_p10(values):
-    """Industry convention: P90 = low case (90% chance of exceeding), P10 = high case."""
+    """Industry labels: P90 = low case (10th percentile), P50 = median, P10 = high case (90th percentile).
+    Here they are percentiles of a model-and-bootstrap ensemble, not real-world probabilities."""
     v = np.asarray(values, float)
     return float(np.percentile(v, 10)), float(np.percentile(v, 50)), float(np.percentile(v, 90))

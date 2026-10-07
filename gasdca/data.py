@@ -21,17 +21,20 @@ def load_wells(path=None):
 
 def well_series(df, lease_kid):
     """
-    One well as a complete monthly series (missing months filled with 0), with:
+    One well as a complete monthly series, with:
+        gas_mcf   monthly volume; months with no KGS record are filled with 0
+        reported  True if KGS has a record for the month (False = missing record)
         days      calendar days in the month
         rate      calendar-day average rate, Mcf/d = monthly volume / days in month
         t_days    days from the first month's midpoint
     KGS reports volumes only, not producing days, so 'rate' is a calendar-day rate:
-    a month with a week of downtime shows up as a low rate.
+    a month in which the well produced for only part of the time shows up as a low rate.
     """
     w = df[df["lease_kid"] == lease_kid].set_index("month")["gas_mcf"]
     idx = pd.date_range(w.index.min(), w.index.max(), freq="MS")
+    reported = idx.isin(w.index)
     w = w.reindex(idx, fill_value=0)
-    out = pd.DataFrame({"gas_mcf": w.values}, index=idx)
+    out = pd.DataFrame({"gas_mcf": w.values, "reported": reported}, index=idx)
     out["days"] = [calendar.monthrange(d.year, d.month)[1] for d in idx]
     out["rate"] = out["gas_mcf"] / out["days"]
     mid = idx + pd.to_timedelta(out["days"].values / 2.0, unit="D")
@@ -73,19 +76,23 @@ def fit_window(series, max_gap_months=3, peak_search_months=6, max_months=None):
     return mask
 
 
-def downtime_months(series, window=5, low=0.5, high=2.0, prior_months=12, prior_low=0.3):
+def anomalous_months(series, window=5, low=0.5, high=2.0, prior_months=12, prior_low=0.3):
     """
-    Flag months whose rate does not reflect the reservoir's decline:
+    Flag months whose rate departs strongly from the months around them:
 
-    - partial downtime: rate below `low` x the centred rolling median of the
-      surrounding `window` months (a well shut in for 10 days still reports a
-      full month, so its calendar-day rate dips);
-    - reporting catch-up: rate above `high` x that median (volume from earlier
-      months reported late);
-    - end-of-life collapse: rate below `prior_low` x the median of the previous
-      `prior_months` months (the centred median misses this at the very end).
+    - low: rate below `low` x the centred rolling median of the surrounding `window` months;
+    - high: rate above `high` x that median;
+    - collapse: rate below `prior_low` x the median of the previous `prior_months` months
+      (the centred median misses a drop at the very end of a series).
 
-    These months are left out of the fits; their gas still counts in cumulative production.
+    Possible causes include partial-month downtime, late or catch-up reporting and
+    curtailment, but monthly volumes alone cannot tell which, so these are only
+    *flagged anomalies*. They are left out of the fits (their gas still counts in
+    cumulative production); run_analysis.py repeats the hindcast without this filter
+    to show how much it matters.
+
+    The centred median looks two months ahead. For a blind test, call this on the
+    history up to the cutoff only, so no later month can influence the flags.
     """
     r = series["rate"].where(series["gas_mcf"] > 0)
     med = r.rolling(window, center=True, min_periods=3).median()
